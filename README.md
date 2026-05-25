@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/dolfinx-rans-readme-banner.png" alt="dolfinx-rans README banner" width="100%">
+</p>
+
 # dolfinx-rans
 
 **A modern RANS k-ω turbulence solver for DOLFINx/FEniCSx 0.10+.**
