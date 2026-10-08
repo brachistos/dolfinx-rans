@@ -1,11 +1,11 @@
 {
-  "config_path": "channel/channel.jsonc",
+  "config_path": "channel/channel_joove.jsonc",
   "cwd": "/home/rfrantz/dolfinx-rans",
   "dolfinx_rans_version": "0.1.0",
   "git": {
     "dirty": "1",
     "root": "/home/rfrantz/dolfinx-rans",
-    "sha": "e23bdbef0198d2d6ca7eafd493185edd40a5f82a"
+    "sha": "50e0fb1fae79f17edc4a47f631770256b9882240"
   },
   "platform": {
     "machine": "x86_64",
@@ -16,5 +16,5 @@
     "executable": "/home/rfrantz/miniforge3/envs/fenicsx/bin/python3",
     "version": "3.11.14 | packaged by conda-forge | (main, Jan 26 2026, 23:48:32) [GCC 14.3.0]"
   },
-  "timestamp_utc": "2026-02-17T10:20:47.844722+00:00"
+  "timestamp_utc": "2026-02-17T18:47:16.639050+00:00"
 }

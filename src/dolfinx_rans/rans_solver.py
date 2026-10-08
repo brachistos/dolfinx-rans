@@ -374,6 +374,15 @@ def solve_rans_kw(
         use_body_force = nondim.use_body_force
         u_bulk_init = 15.0  # Conservative initial
 
+    # Pressure-driven periodic: periodic V/S, Dirichlet P, no body force
+    pressure_driven_periodic = (
+        not is_bfs
+        and not use_body_force
+        and nondim is not None
+        and (nondim.P_inlet != 0.0 or nondim.P_outlet != 0.0)
+    )
+    needs_periodic = use_body_force or pressure_driven_periodic
+
     if comm.rank == 0:
         if is_bfs:
             print(f"BFS MODE: Re_tau = {Re_tau}", flush=True)
@@ -381,6 +390,8 @@ def solve_rans_kw(
             print(f"NONDIMENSIONAL MODE: Re_tau = {Re_tau}", flush=True)
         print(f"  nu* = 1/Re_tau = {nu:.6f}", flush=True)
         print(f"  Body force: f_x = {1.0 if use_body_force else 0.0}", flush=True)
+        if pressure_driven_periodic:
+            print(f"  Pressure-driven periodic: P_inlet={nondim.P_inlet}, P_outlet={nondim.P_outlet}", flush=True)
 
     # ── Instantiate turbulence model ──────────────────────────────
     model = create_model(turb.model)
@@ -513,6 +524,18 @@ def solve_rans_kw(
         omega_init_func.x.array, k_n.x.array
     )
 
+    # Override channel ICs if nondim specifies inlet values (uniform IC for periodic)
+    if not is_bfs and nondim is not None:
+        if nondim.U_inlet > 0:
+            u_n.interpolate(lambda x: np.stack([
+                np.full_like(x[0], nondim.U_inlet),
+                np.zeros_like(x[0]),
+            ]))
+        if nondim.k_inlet > 0:
+            k_n.x.array[:] = nondim.k_inlet
+        if nondim.epsilon_inlet > 0:
+            omega_n.x.array[:] = nondim.epsilon_inlet
+
     u_n1.x.array[:] = u_n.x.array
     u_.x.array[:] = u_n.x.array
     k_.x.array[:] = k_n.x.array
@@ -523,6 +546,12 @@ def solve_rans_kw(
     nu_t_.x.array[:] = model.initial_nu_t(k_n.x.array, omega_n.x.array)
     nu_t_.x.array[:] = np.clip(nu_t_.x.array, 0, turb.nu_t_max_factor * nu)
     nu_t_old.x.array[:] = nu_t_.x.array
+
+    # Pressure IC: linear gradient for pressure-driven periodic channel
+    if pressure_driven_periodic:
+        Lx_val = geom.Lx
+        p_.interpolate(lambda x: nondim.P_inlet + (nondim.P_outlet - nondim.P_inlet) * x[0] / Lx_val)
+        p_.x.scatter_forward()
 
     wall_dofs_V_tb = locate_dofs_topological(V, fdim, wall_facets_tb)
     wall_dofs_S_tb = locate_dofs_topological(S, fdim, wall_facets_tb)
@@ -573,7 +602,15 @@ def solve_rans_kw(
     if use_body_force:
         # Periodic channel: no pressure Dirichlet BC (gauge set by nullspace)
         bcp = []
+    elif pressure_driven_periodic:
+        # Pressure-driven periodic: P=P_inlet at left, P=P_outlet at right
+        left_dofs_Q = locate_dofs_topological(Q, fdim, left_facets)
+        right_dofs_Q = locate_dofs_topological(Q, fdim, outlet_facets)
+        bc_p_in = dirichletbc(PETSc.ScalarType(nondim.P_inlet), left_dofs_Q, Q)
+        bc_p_out = dirichletbc(PETSc.ScalarType(nondim.P_outlet), right_dofs_Q, Q)
+        bcp = [bc_p_in, bc_p_out]
     else:
+        # BFS: p=0 at outlet
         outlet_dofs_Q = locate_dofs_topological(Q, fdim, outlet_facets)
         bc_pressure = dirichletbc(PETSc.ScalarType(0.0), outlet_dofs_Q, Q)
         bcp = [bc_pressure]
@@ -605,9 +642,9 @@ def solve_rans_kw(
             )
 
     # ── Periodic BCs via dolfinx_mpc (channel only) ──────────────
-    if use_body_force and is_bfs:
-        raise ValueError("use_body_force=True is not supported for BFS geometry")
-    if use_body_force:
+    if (use_body_force or pressure_driven_periodic) and is_bfs:
+        raise ValueError("Periodic modes are not supported for BFS geometry")
+    if needs_periodic:
         if not HAVE_MPC:
             raise RuntimeError(
                 "dolfinx_mpc is required for periodic channel flow. "
@@ -632,11 +669,15 @@ def solve_rans_kw(
         )
         mpc_V.finalize()
 
-        mpc_Q = MultiPointConstraint(Q)
-        mpc_Q.create_periodic_constraint_geometrical(
-            Q, periodic_indicator, periodic_relation, bcp, tol=_pbc_tol,
-        )
-        mpc_Q.finalize()
+        # mpc_Q: only for body-force periodic (pressure-driven has Dirichlet Q)
+        if use_body_force:
+            mpc_Q = MultiPointConstraint(Q)
+            mpc_Q.create_periodic_constraint_geometrical(
+                Q, periodic_indicator, periodic_relation, bcp, tol=_pbc_tol,
+            )
+            mpc_Q.finalize()
+        else:
+            mpc_Q = None
 
         mpc_S = MultiPointConstraint(S)
         mpc_S.create_periodic_constraint_geometrical(
@@ -645,14 +686,16 @@ def solve_rans_kw(
         mpc_S.finalize()
 
         if comm.rank == 0:
+            q_slaves = mpc_Q.num_local_slaves if mpc_Q is not None else 0
             print(f"Periodic MPC: V={mpc_V.num_local_slaves} slaves, "
-                  f"Q={mpc_Q.num_local_slaves}, S={mpc_S.num_local_slaves}")
+                  f"Q={q_slaves}, S={mpc_S.num_local_slaves}")
 
         # Backsubstitute ICs so slave DOFs satisfy the periodic constraint
         for fn in [u_n, u_n1, u_]:
             mpc_V.backsubstitution(fn)
-        for fn in [p_, phi]:
-            mpc_Q.backsubstitution(fn)
+        if mpc_Q is not None:
+            for fn in [p_, phi]:
+                mpc_Q.backsubstitution(fn)
         for fn in [k_n, k_, k_prev, omega_n, omega_, omega_prev]:
             mpc_S.backsubstitution(fn)
     else:
@@ -738,8 +781,14 @@ def solve_rans_kw(
         b_w = mpc_assemble_vector(L_w, mpc_S)
         A1 = mpc_assemble_matrix(a1, mpc_V, bcs=bcu)
         b1 = mpc_assemble_vector(L1, mpc_V)
-        A2 = mpc_assemble_matrix(a2, mpc_Q, bcs=bcp)
-        b2 = mpc_assemble_vector(L2, mpc_Q)
+        if mpc_Q is not None:
+            A2 = mpc_assemble_matrix(a2, mpc_Q, bcs=bcp)
+            b2 = mpc_assemble_vector(L2, mpc_Q)
+        else:
+            # Pressure-driven periodic: standard assembly for pressure
+            A2 = assemble_matrix(a2, bcs=bcp)
+            A2.assemble()
+            b2 = create_vector(Q)
         A3 = mpc_assemble_matrix(a3, mpc_V, bcs=[])
         b3 = mpc_assemble_vector(L3, mpc_V)
     else:

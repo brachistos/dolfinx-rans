@@ -1,58 +1,65 @@
 {
   "_meta": {
-    "notes": "Keep only this file in channel/ and clear channel/results to rerun.",
-    "purpose": "Canonical channel benchmark",
-    "reference": "Nek poiseuille_RANS benchmark parity for Re_\u03c4=1115.8187"
+    "notes": "Pressure-driven periodic channel \u2014 P_inlet/P_outlet Dirichlet, periodic V/k/eps",
+    "purpose": "Reproduce joove k-epsilon channel benchmark"
   },
-  "benchmark": {
-    "reference_profile_csv": ""
-  },
-  "geom": {
-    "Lx": 1.0,
+  "geometry": {
+    "Lx": 2.0,
     "Ly": 2.0,
-    "Nx": 192,
-    "Ny": 166,
+    "Nx": 20,
+    "Ny": 20,
     "growth_rate": 1.0,
-    "mesh_type": "quad",
-    "stretching": "tanh",
+    "mesh_type": "triangle",
+    "stretching": "geometric",
+    "type": "channel",
     "use_symmetry": false,
-    "y_first": 0.001604628,
-    "y_first_tol_rel": 0.2
+    "y_first": 0,
+    "y_first_tol_rel": 0.5
   },
   "nondim": {
-    "Re_tau": 1115.818661288065,
-    "use_body_force": true
+    "P_inlet": 2.0,
+    "P_outlet": 0.0,
+    "Re_tau": 550,
+    "U_inlet": 20.0,
+    "epsilon_inlet": 2.23,
+    "k_inlet": 1.5,
+    "use_body_force": false
   },
   "solve": {
-    "cfl_target": 0.25,
-    "dt": 0.005,
+    "cfl_target": 1.0,
+    "dt": 0.001,
     "dt_growth": 1.05,
     "dt_growth_threshold": 0.8,
     "dt_max": 0.01,
     "enable_physical_convergence": false,
-    "log_interval": 10,
-    "max_iter": 3000,
-    "min_dt_ratio": 0.05,
-    "min_iter": 50,
+    "log_interval": 5,
+    "max_iter": 50,
+    "min_dt_ratio": 0.0,
+    "min_iter": 10,
     "out_dir": "results",
-    "physical_convergence_start_iter": 10,
-    "physical_tau_wall_rel_tol": 0.0025,
-    "physical_u_bulk_rel_tol": 0.0001,
-    "picard_max": 6,
+    "picard_max": 4,
     "picard_tol": 0.0001,
-    "snapshot_interval": 50,
+    "snapshot_interval": 0,
     "steady_tol": 1e-06,
     "t_final": 10000.0,
-    "under_relax_k_omega": 0.6,
-    "under_relax_nu_t": 0.4
+    "under_relax_k_omega": 0.5,
+    "under_relax_nu_t": 0.3
   },
   "turb": {
+    "C_epsilon_1": 1.44,
+    "C_epsilon_2": 1.92,
     "C_lim": 0.0,
+    "C_mu": 0.09,
     "beta_star": 0.09,
-    "k_max": 20.0,
+    "epsilon_max": 100000000.0,
+    "epsilon_min": 1e-16,
+    "f_nu_min": 0.01116225,
+    "k_max": 100.0,
     "k_min": 1e-10,
-    "model": "wilcox2006",
-    "nu_t_max_factor": 2000.0,
-    "omega_min": 1.0
+    "model": "kepsilon",
+    "nu_t_max_factor": 5000.0,
+    "omega_min": 1e-06,
+    "sigma_epsilon": 1.3,
+    "sigma_k_kepsilon": 1.0
   }
 }
