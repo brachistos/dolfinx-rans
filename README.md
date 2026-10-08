@@ -6,7 +6,7 @@
 
 **A modern RANS k-ω turbulence solver for DOLFINx/FEniCSx 0.10+.**
 
-> **Status (October 2026):** this project is not under active development. `master` is the last state that was run (channel and BFS cases, February 2026). Unverified work on a pressure-driven periodic channel and an MPI mesh fix for the BFS case is on the branch [`wip/pressure-driven-periodic`](https://github.com/brachistos/dolfinx-rans/tree/wip/pressure-driven-periodic). Issues and pull requests may not get an answer.
+> **Status (October 2026):** this project is not under active development. Issues and pull requests may not get an answer.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![DOLFINx](https://img.shields.io/badge/DOLFINx-0.10.0+-green.svg)](https://fenicsproject.org/)

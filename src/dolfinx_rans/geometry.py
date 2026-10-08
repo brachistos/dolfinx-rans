@@ -685,36 +685,42 @@ def create_bfs_mesh(geom: BFSGeom):
     i_step = Nx_up        # index where x=0
     j_step = Ny_step      # index where y=h
 
-    # Build node map: (i,j) -> global node index (-1 for solid step region)
-    node_id = -np.ones((Nx + 1, Ny + 1), dtype=np.int64)
-    coords = []
-    n = 0
-    for j in range(Ny + 1):
-        for i in range(Nx + 1):
-            if i < i_step and j < j_step:
-                continue  # inside solid step
-            node_id[i, j] = n
-            coords.append([x_all[i], y_all[j]])
-            n += 1
-    coords = np.array(coords, dtype=np.float64)
-
-    # Quad cells (Basix vertex ordering: BL, BR, TL, TR)
-    cells = []
-    for j in range(Ny):
-        for i in range(Nx):
-            bl = node_id[i, j]
-            br = node_id[i + 1, j]
-            tl = node_id[i, j + 1]
-            tr = node_id[i + 1, j + 1]
-            if min(bl, br, tl, tr) < 0:
-                continue
-            cells.append([bl, br, tl, tr])
-    cells = np.array(cells, dtype=np.int64)
-
-    # Create DOLFINx mesh
+    # Build mesh topology and geometry on rank 0 only.
+    # mesh.create_mesh requires rank-0-only input; all-ranks-full-data
+    # causes heap corruption in the ParMETIS partitioner.
     from basix.ufl import element as basix_element
 
     e = basix_element("Lagrange", "quadrilateral", 1, shape=(2,))
+
+    if comm.rank == 0:
+        node_id = -np.ones((Nx + 1, Ny + 1), dtype=np.int64)
+        coords = []
+        n = 0
+        for j in range(Ny + 1):
+            for i in range(Nx + 1):
+                if i < i_step and j < j_step:
+                    continue  # inside solid step
+                node_id[i, j] = n
+                coords.append([x_all[i], y_all[j]])
+                n += 1
+        coords = np.array(coords, dtype=np.float64)
+
+        # Quad cells (Basix vertex ordering: BL, BR, TL, TR)
+        cells = []
+        for j in range(Ny):
+            for i in range(Nx):
+                bl = node_id[i, j]
+                br = node_id[i + 1, j]
+                tl = node_id[i, j + 1]
+                tr = node_id[i + 1, j + 1]
+                if min(bl, br, tl, tr) < 0:
+                    continue
+                cells.append([bl, br, tl, tr])
+        cells = np.array(cells, dtype=np.int64)
+    else:
+        cells = np.empty((0, 4), dtype=np.int64)
+        coords = np.empty((0, 2), dtype=np.float64)
+
     domain = mesh.create_mesh(comm, cells, e, coords)
 
     if comm.rank == 0:

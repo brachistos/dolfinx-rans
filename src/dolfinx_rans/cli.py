@@ -127,7 +127,11 @@ def _run_channel(cfg, cfg_path, args, turb, solve_params):
         print(f"RANS CHANNEL FLOW ({turb.model}) - dolfinx-rans")
         print("=" * 60)
         print(f"MPI ranks: {nprocs}")
-        print(f"Mode: NONDIMENSIONAL (Re_τ = {Re_tau})")
+        if nondim.P_inlet != 0 or nondim.P_outlet != 0:
+            print(f"Mode: PRESSURE-DRIVEN PERIODIC (Re_τ = {Re_tau})")
+            print(f"  P_inlet = {nondim.P_inlet}, P_outlet = {nondim.P_outlet}")
+        else:
+            print(f"Mode: NONDIMENSIONAL (Re_τ = {Re_tau})")
         print(f"Scaling: δ = 1, u_τ = 1, ν* = 1/Re_τ = {1.0/Re_tau:.6f}")
         stretch_mode = geom.stretching.lower()
         if geom.y_first > 0 and (stretch_mode == "tanh" or geom.growth_rate > 1.0):

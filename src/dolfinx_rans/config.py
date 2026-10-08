@@ -67,6 +67,9 @@ class NondimParams:
     U_inlet: float = 0.0  # Inlet velocity magnitude (0 = use 1.0)
     k_inlet: float = 0.0  # Inlet TKE (0 = auto from 5% TI)
     epsilon_inlet: float = 0.0  # Inlet epsilon (0 = model.compute_inlet_scalar)
+    # Pressure-driven periodic channel (non-zero = active)
+    P_inlet: float = 0.0  # Inlet pressure (0 = not pressure-driven)
+    P_outlet: float = 0.0  # Outlet pressure
 
 
 @dataclass(frozen=True)
