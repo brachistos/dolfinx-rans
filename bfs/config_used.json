@@ -1,0 +1,62 @@
+{
+  "_meta": {
+    "notes": "Re_h target + ER=2 setup, adapted to dolfinx-rans.",
+    "purpose": "Backward-facing step benchmark",
+    "source": "https://github.com/joove123/k-epsilon/blob/main/Configs/ConfigBackStep.py",
+    "source_note": "Only compatible keys are retained; this solver uses a generated mesh."
+  },
+  "geometry": {
+    "Nx_downstream": 120,
+    "Nx_upstream": 30,
+    "Ny_inlet": 20,
+    "Ny_outlet": 40,
+    "downstream_length": 20.0,
+    "expansion_ratio": 2.0,
+    "growth_rate": 1.15,
+    "mesh_type": "quad",
+    "step_height": 1.0,
+    "stretching": "geometric",
+    "type": "bfs",
+    "upstream_length": 5.0,
+    "y_first": 0.005
+  },
+  "nondim": {
+    "Re_tau": 5500.0,
+    "U_inlet": 25.0,
+    "epsilon_inlet": 1.46,
+    "k_inlet": 1.73,
+    "use_body_force": false
+  },
+  "solve": {
+    "cfl_target": 0.7,
+    "dt": 0.001,
+    "dt_growth": 1.05,
+    "dt_growth_threshold": 0.8,
+    "dt_max": 0.01,
+    "enable_physical_convergence": false,
+    "log_interval": 10,
+    "max_iter": 3000,
+    "min_dt_ratio": 0.05,
+    "min_iter": 200,
+    "out_dir": "results",
+    "physical_convergence_start_iter": 10,
+    "physical_tau_wall_rel_tol": 0.0025,
+    "physical_u_bulk_rel_tol": 0.0001,
+    "picard_max": 6,
+    "picard_tol": 1e-06,
+    "snapshot_interval": 200,
+    "steady_tol": 1e-06,
+    "t_final": 500000.0,
+    "under_relax_k_omega": 0.1,
+    "under_relax_nu_t": 0.1
+  },
+  "turb": {
+    "C_lim": 0.0,
+    "beta_star": 0.09,
+    "k_max": 100.0,
+    "k_min": 1e-10,
+    "model": "kepsilon",
+    "nu_t_max_factor": 2000.0,
+    "omega_min": 0.1
+  }
+}
